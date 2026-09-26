@@ -7,6 +7,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useNpc, useMarker, MissionMarker } from './useNpc';
 import { BlobShadow } from '@/components/fx/Shadows';
+import { groundHeight } from '@/lib/ground';
 
 interface BabyProps {
   id: string;
@@ -16,7 +17,9 @@ interface BabyProps {
 }
 
 const FLOAT_SPEED = 2;
-const FLOAT_AMPLITUDE = 0.05;
+// Rebote suave de respiración (antes flotaban: parecía gente en el aire)
+const FLOAT_AMPLITUDE = 0.012;
+const FEET = 0.06 * 1.35; // altura de los pies en el modelo (escala 1.35)
 
 export default function Baby({
   id,
@@ -27,6 +30,8 @@ export default function Baby({
   const groupRef = useRef<THREE.Group>(null);
   const floatPhase = useRef(Math.random() * Math.PI * 2);
   const { isNear, cheerRef } = useNpc(id, position);
+  // La posición de datos está ~0.5 m sobre el piso: apoyar el modelo en el suelo real
+  const ground = groundHeight(position[0], position[2], position[1]) - position[1];
   const marker = useMarker(id);
 
   const materials = useMemo(
@@ -75,9 +80,10 @@ export default function Baby({
     >
       <CapsuleCollider args={[0.15, 0.12]} position={[0, 0.3, 0]} sensor />
 
-      <group position={[0, -0.47, 0]}>
+      <group position={[0, ground, 0]}>
         <BlobShadow scale={0.6} />
       </group>
+      <group position={[0, ground - FEET, 0]}>
       <group ref={cheerRef} scale={1.35}>
       {marker && <MissionMarker kind={marker} height={1.25} />}
       <group ref={groupRef} userData={{ outline: 0.012, batchLocal: true }}>
@@ -215,6 +221,7 @@ export default function Baby({
           </div>
         </Html>
         )}
+      </group>
       </group>
       </group>
     </RigidBody>

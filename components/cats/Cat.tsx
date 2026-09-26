@@ -8,6 +8,7 @@ import { useGameStore } from '@/store/gameStore';
 import { player, world } from '@/lib/runtime';
 import { catInteractionId, catPetAt, catPositions, type CatDef } from '@/lib/cats';
 import { sfx } from '@/lib/audio';
+import { groundHeight } from '@/lib/ground';
 
 /*
  * Un gatito: modelo procedural low-poly + un cerebrito de estados.
@@ -200,7 +201,7 @@ export default function Cat({ def }: { def: CatDef }) {
       p.x += (tx / d) * step;
       p.z += (tz / d) * step;
     }
-    if (state.current !== 'follow') p.y = damp(p.y, 0, 8, dt);
+    if (state.current !== 'follow') p.y = damp(p.y, groundHeight(p.x, p.z, p.y), 8, dt);
 
     r.position.copy(p);
     r.rotation.y = heading.current;

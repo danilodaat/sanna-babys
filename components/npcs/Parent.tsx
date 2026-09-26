@@ -9,6 +9,7 @@ import { useGameStore } from '@/store/gameStore';
 import { player } from '@/lib/runtime';
 import { useNpc, useMarker, MissionMarker } from './useNpc';
 import { BlobShadow } from '@/components/fx/Shadows';
+import { groundHeight } from '@/lib/ground';
 
 interface ParentProps {
   id: string;
@@ -37,6 +38,8 @@ export default function Parent({
 
   const modal = useGameStore((s) => s.modal);
   const { isNear, cheerRef } = useNpc(id, position);
+  // Los zapatos del modelo quedan 0.135 m sobre su base: bajarlo hasta el suelo real
+  const ground = groundHeight(position[0], position[2], position[1]) - position[1];
   const marker = useMarker(id);
 
   const isMother = variant === 'mother' || variant === 'girl' || variant === 'nurse';
@@ -116,7 +119,10 @@ export default function Parent({
     <RigidBody type="fixed" position={position} colliders={false}>
       <CapsuleCollider args={[0.4, 0.18]} position={[0, 0.6, 0]} sensor />
 
-      <BlobShadow scale={isKid ? 0.75 : 1} />
+      <group position={[0, ground, 0]}>
+        <BlobShadow scale={isKid ? 0.75 : 1} />
+      </group>
+      <group position={[0, ground - 0.135 * (isKid ? 0.72 : 1), 0]}>
       <group ref={cheerRef} scale={isKid ? 0.72 : 1}>
       {marker && <MissionMarker kind={marker} height={isKid ? 2.25 : 1.95} />}
       <group ref={groupRef} userData={{ outline: 0.012, batchLocal: true }}>
@@ -310,6 +316,7 @@ export default function Parent({
         </Html>
         )}
 
+      </group>
       </group>
       </group>
     </RigidBody>

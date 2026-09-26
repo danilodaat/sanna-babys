@@ -30,7 +30,7 @@ import RideOverlay from './ui/RideOverlay';
 import Town from './world/Town';
 import Traffic from './world/Traffic';
 import Walker from './people/Walker';
-import { WALKERS } from '@/lib/walkers';
+import { WALKERS, walkerPositions } from '@/lib/walkers';
 import ObjectiveArrow from './fx/ObjectiveArrow';
 import { NPCS } from '@/lib/npcs';
 import Zones from './world/Zones';
@@ -103,7 +103,7 @@ export default function Game() {
   // ?debug expone el runtime en la consola (adelantar la hora, teletransportar, etc.)
   useEffect(() => {
     if (new URLSearchParams(window.location.search).has('debug')) {
-      (window as unknown as Record<string, unknown>).__sb = { ...runtime, store: useGameStore, fleet };
+      (window as unknown as Record<string, unknown>).__sb = { ...runtime, store: useGameStore, fleet, walkerPositions };
     }
   }, []);
 

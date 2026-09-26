@@ -6,6 +6,7 @@ import { Html } from '@react-three/drei';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
 import { player } from '@/lib/runtime';
+import { groundHeight } from '@/lib/ground';
 import { walkerInteractionId, walkerPositions, walkerWaveAt, type WalkerDef } from '@/lib/walkers';
 
 /*
@@ -137,12 +138,15 @@ export default function Walker({ def }: { def: WalkerDef }) {
         a.rotation.z = 0;
       }
     });
-    r.position.y = walking ? Math.abs(Math.cos(phase.current)) * 0.04 : 0;
+    // Pisar el suelo real (pasto, calle o vereda) + un rebote chiquito al caminar
+    r.position.y = groundHeight(p.x, p.z) + (walking ? Math.abs(Math.cos(phase.current)) * 0.03 : 0);
   });
 
   const k = def.kid ? 0.72 : 1;
   return (
     <group ref={root} scale={k}>
+      {/* Los zapatos quedan 0.088 m sobre la base del modelo */}
+      <group position={[0, -0.088, 0]}>
       <group userData={{ outline: 0.012, batchLocal: true }}>
         <mesh geometry={g.body} material={m.shirt} position={[0, 0.82, 0]} castShadow />
         <group position={[0, 1.3, 0]}>
@@ -183,6 +187,7 @@ export default function Walker({ def }: { def: WalkerDef }) {
           <mesh geometry={g.balloon} material={m.red} position={[0, 2.12, 0]} />
         </group>
       )}
+      </group>
       {near && (
         <Html position={[0, 1.85, 0]} center zIndexRange={[10, 0]} style={{ pointerEvents: 'none' }}>
           <div style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', padding: '2px 8px', borderRadius: 8, fontSize: 10, fontWeight: 700, whiteSpace: 'nowrap' }}>{def.name}</div>

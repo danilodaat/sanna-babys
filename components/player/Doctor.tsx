@@ -359,7 +359,8 @@ export default function Doctor() {
       <CapsuleCollider args={[0.4, 0.22]} position={[0, 0.62, 0]} />
 
       <BlobShadow />
-      <group ref={groupRef} userData={{ outline: 0.014 }}>
+      {/* Bajado 0.09 m: los zapatos del modelo quedaban sobre la base de la cápsula (flotaba) */}
+      <group ref={groupRef} position={[0, -0.09, 0]} userData={{ outline: 0.014 }}>
         <group ref={bodyRef}>
           {/* === HEAD === */}
           <group ref={headRef} position={[0, 1.28, 0]}>
