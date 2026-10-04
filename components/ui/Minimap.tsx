@@ -69,15 +69,15 @@ export default function Minimap() {
       ctx.arc(R, R, R - 2, 0, Math.PI * 2);
       ctx.clip();
 
-      ctx.fillStyle = '#86cf62';
+      ctx.fillStyle = '#8FCB78';
       ctx.fillRect(0, 0, SIZE, SIZE);
-      rect(PARK, '#5fb84a');
+      rect(PARK, '#83B976');
       const [pwx, pwz] = toScreen(POND.x, POND.z);
       ctx.beginPath();
       ctx.arc(pwx, pwz, POND.r * k, 0, Math.PI * 2);
       ctx.fillStyle = '#4fc3f7';
       ctx.fill();
-      ROADS.forEach((r) => rect(r, '#6b6b78'));
+      ROADS.forEach((r) => rect(r, '#747184'));
       BUILDINGS.forEach((b) => rect(b.rect, b.color));
       rect(HOSPITAL, '#ffffff');
 

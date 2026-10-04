@@ -5,6 +5,7 @@ import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
 import { TOWN } from '@/lib/mapData';
+import { getToonGradient } from '@/components/fx/Toonify';
 
 /*
  * Pasto y flores instanciados que se mecen con el viento (shader).
@@ -98,13 +99,7 @@ export default function Foliage() {
   const grassCount = quality === 'alto' ? 3200 : 1400;
   const flowerCount = quality === 'alto' ? 500 : 220;
 
-  const gradient = useMemo(() => {
-    const tex = new THREE.DataTexture(new Uint8Array([110, 180, 235, 255]), 4, 1, THREE.RedFormat);
-    tex.minFilter = tex.magFilter = THREE.NearestFilter;
-    tex.generateMipmaps = false;
-    tex.needsUpdate = true;
-    return tex;
-  }, []);
+  const gradient = useMemo(() => getToonGradient(), []);
 
   const grass = useMemo(() => {
     // Mata de 3 hojitas (conos aplastados) fusionada en una sola geometría
@@ -136,8 +131,8 @@ export default function Foliage() {
   useLayoutEffect(() => {
     const dummy = new THREE.Object3D();
     const color = new THREE.Color();
-    const greens = ['#6FBF4A', '#7FCB57', '#5DAA3E', '#8BD463'];
-    const petals = ['#FF6B9D', '#FFD54F', '#FFFFFF', '#BA68C8', '#FF8A65', '#4FC3F7'];
+    const greens = ['#80B66F', '#8FCB78', '#73A765', '#A0CC8B'];
+    const petals = ['#DFA4BA', '#E8D8A4', '#FFF4E3', '#B89AC9', '#E4B797', '#9FC8D8'];
 
     const g = grassRef.current;
     if (g) {

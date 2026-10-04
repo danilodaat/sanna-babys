@@ -14,12 +14,12 @@ function Tree({ position, height = 4 }: { position: [number, number, number]; he
       {/* Foliage sphere */}
       <mesh castShadow position={[0, height * 0.75, 0]}>
         <sphereGeometry args={[height * 0.35, 10, 10]} />
-        <meshStandardMaterial color="#4CAF50" flatShading />
+        <meshStandardMaterial color="#72AC78" flatShading />
       </mesh>
       {/* Top cone */}
       <mesh castShadow position={[0, height * 1.0, 0]}>
         <coneGeometry args={[height * 0.25, height * 0.4, 8]} />
-        <meshStandardMaterial color="#66BB6A" flatShading />
+        <meshStandardMaterial color="#91BE89" flatShading />
       </mesh>
     </group>
   );
@@ -154,7 +154,7 @@ function Road({
       {/* Asphalt */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.02, 0]}>
         <planeGeometry args={size} />
-        <meshStandardMaterial color="#616161" />
+        <meshStandardMaterial color="#747184" />
       </mesh>
       {/* Center dashes */}
       {Array.from({ length: Math.floor(Math.max(size[0], size[1]) / 4) }).map((_, i) => {
@@ -169,7 +169,7 @@ function Road({
             position={isHorizontal ? [offset, 0.03, 0] : [0, 0.03, offset]}
           >
             <planeGeometry args={isHorizontal ? [1.5, 0.15] : [0.15, 1.5]} />
-            <meshStandardMaterial color="#FDD835" />
+            <meshStandardMaterial color="#E8D8A4" />
           </mesh>
         );
       })}
@@ -188,7 +188,7 @@ function Sidewalk({
   return (
     <mesh receiveShadow position={position}>
       <boxGeometry args={[size[0], 0.15, size[1]]} />
-      <meshStandardMaterial color="#BDBDBD" />
+      <meshStandardMaterial color="#FFF4E3" />
     </mesh>
   );
 }
@@ -200,13 +200,13 @@ function Park({ position }: { position: [number, number, number] }) {
       {/* Grass patch */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.03, 0]}>
         <planeGeometry args={[28, 22]} />
-        <meshStandardMaterial color="#66BB6A" />
+        <meshStandardMaterial color="#83B976" />
       </mesh>
 
       {/* Path through park */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.04, 0]}>
         <planeGeometry args={[2, 20]} />
-        <meshStandardMaterial color="#D7CCC8" />
+        <meshStandardMaterial color="#FFF4E3" />
       </mesh>
 
       {/* Trees */}
@@ -238,7 +238,7 @@ function Park({ position }: { position: [number, number, number] }) {
 
 /* ─── Flower bed ─── */
 function FlowerBed({ position }: { position: [number, number, number] }) {
-  const colors = ['#E91E63', '#FF9800', '#FFEB3B', '#9C27B0', '#F44336'];
+  const colors = ['#DFA4BA', '#E4B797', '#E8D8A4', '#B89AC9', '#D99D9A'];
   return (
     <group position={position}>
       {colors.map((color, i) => (
@@ -297,14 +297,14 @@ export function City() {
           position={[-15, 0, 32]}
           size={[8, 6, 7]}
           color="#F8BBD0"
-          roofColor="#E91E63"
+          roofColor="#B97F96"
         />
         {/* Store — warm yellow */}
         <Building
           position={[-3, 0, 34]}
           size={[10, 5, 8]}
           color="#FFF9C4"
-          roofColor="#FF8F00"
+          roofColor="#C5A174"
           windowColor="#FFECB3"
         />
         {/* Store awning */}
@@ -318,7 +318,7 @@ export function City() {
           position={[12, 0, 33]}
           size={[9, 10, 8]}
           color="#BBDEFB"
-          roofColor="#1565C0"
+          roofColor="#7F96B4"
         />
         {/* School flag pole */}
         <mesh position={[28, 3.5, 32]}>
@@ -336,7 +336,7 @@ export function City() {
           position={[35, 0, -5]}
           size={[8, 14, 8]}
           color="#E0E0E0"
-          roofColor="#757575"
+          roofColor="#8D8999"
           windowColor="#80CBC4"
         />
 
@@ -345,7 +345,7 @@ export function City() {
           position={[35, 0, 8]}
           size={[7, 5, 6]}
           color="#CE93D8"
-          roofColor="#7B1FA2"
+          roofColor="#9D87B0"
         />
         {/* Pharmacy cross */}
         <group position={[35, 4, 11.1]}>
@@ -367,14 +367,14 @@ export function City() {
           position={[-10, 0, -28]}
           size={[8, 5, 7]}
           color="#FFAB91"
-          roofColor="#BF360C"
+          roofColor="#B28B80"
         />
         {/* Bakery — cream */}
         <Building
           position={[5, 0, -30]}
           size={[9, 5, 6]}
           color="#FFF3E0"
-          roofColor="#F57F17"
+          roofColor="#C5A174"
         />
 
         {/* ═══ PARK — south-east ═══ */}

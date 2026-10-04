@@ -8,6 +8,7 @@ import * as THREE from 'three';
 import { useNpc, useMarker, MissionMarker } from './useNpc';
 import { BlobShadow } from '@/components/fx/Shadows';
 import { groundHeight } from '@/lib/ground';
+import { Smile, useFace } from '@/components/fx/Face';
 
 interface BabyProps {
   id: string;
@@ -30,6 +31,7 @@ export default function Baby({
   const groupRef = useRef<THREE.Group>(null);
   const floatPhase = useRef(Math.random() * Math.PI * 2);
   const { isNear, cheerRef, visualRef, floorVisible } = useNpc(id, position);
+  const { eyesRef, mouthRef } = useFace(id, isNear);
   // La posición de datos está ~0.5 m sobre el piso: apoyar el modelo en el suelo real
   const ground = groundHeight(position[0], position[2], position[1]) - position[1];
   const marker = useMarker(id);
@@ -92,31 +94,16 @@ export default function Baby({
         <group position={[0, 0.55, 0]}>
           <mesh geometry={geometries.head} material={materials.skin} />
 
-          {/* Left eye white */}
-          <mesh
-            geometry={geometries.eyeWhite}
-            material={materials.eyeWhite}
-            position={[-0.08, 0.03, 0.16]}
-          />
-          {/* Left pupil */}
-          <mesh
-            geometry={geometries.eye}
-            material={materials.eye}
-            position={[-0.08, 0.03, 0.2]}
-          />
-
-          {/* Right eye white */}
-          <mesh
-            geometry={geometries.eyeWhite}
-            material={materials.eyeWhite}
-            position={[0.08, 0.03, 0.16]}
-          />
-          {/* Right pupil */}
-          <mesh
-            geometry={geometries.eye}
-            material={materials.eye}
-            position={[0.08, 0.03, 0.2]}
-          />
+          {/* Ojos animados, excluidos del contorno y del lote rígido. */}
+          <group ref={eyesRef} position={[0, 0.03, 0]} userData={{ noOutline: true, noBatch: true }}>
+            {([-0.08, 0.08] as const).map((x) => (
+              <group key={x} position={[x, 0, 0]}>
+                <mesh geometry={geometries.eyeWhite} material={materials.eyeWhite} position={[0, 0, 0.16]} />
+                <mesh geometry={geometries.eye} material={materials.eye} position={[0, 0, 0.2]} />
+              </group>
+            ))}
+          </group>
+          <Smile meshRef={mouthRef} position={[0, -0.055, 0.197]} />
 
           {/* Left cheek */}
           <mesh

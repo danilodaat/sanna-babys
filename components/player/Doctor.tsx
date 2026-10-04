@@ -15,6 +15,7 @@ import { getToonGradient } from '@/components/fx/Toonify';
 import { BlobShadow } from '@/components/fx/Shadows';
 import { STAIR_STEPS, STAIRS, stairHeightAt } from '@/lib/hospital';
 import { fleet } from '@/components/world/Ambulances';
+import { Smile, useFace } from '@/components/fx/Face';
 
 const MOVE_SPEED = 4.6;
 const ACCEL = 14; // qué tan rápido alcanza la velocidad (1/s)
@@ -43,7 +44,7 @@ export default function Doctor() {
   const shadowRef = useRef<THREE.Mesh>(null);
   const bodyRef = useRef<THREE.Group>(null); // squash & stretch + inclinación
   const headRef = useRef<THREE.Group>(null);
-  const eyesRef = useRef<THREE.Group>(null);
+  const { eyesRef, mouthRef } = useFace();
   const leftArmRef = useRef<THREE.Group>(null);
   const rightArmRef = useRef<THREE.Group>(null);
   const leftLegRef = useRef<THREE.Group>(null);
@@ -56,7 +57,6 @@ export default function Doctor() {
   const airTime = useRef(0);
   const wasGrounded = useRef(true);
   const minVy = useRef(0);
-  const blink = useRef({ next: 2, t: -1 });
   const vel = useRef(new THREE.Vector3());
   const jumpHeld = useRef(false);
 
@@ -320,19 +320,7 @@ export default function Doctor() {
       bodyRef.current.position.y *= 1 - k;
     }
 
-    // ─── Parpadeo ───
-    const b = blink.current;
     const now = state.clock.elapsedTime;
-    if (b.t < 0 && now > b.next) b.t = 0;
-    if (b.t >= 0) {
-      b.t += delta;
-      const closed = b.t < 0.12 ? 1 - Math.abs(b.t - 0.06) / 0.06 : 0;
-      if (eyesRef.current) eyesRef.current.scale.y = 1 - closed * 0.9;
-      if (b.t >= 0.12) {
-        b.t = -1;
-        b.next = now + 2 + Math.random() * 3;
-      }
-    }
 
     // Bata: color del ítem equipado; la arcoíris va cambiando de tono
     const coatItem = ITEM_BY_ID[equipped.coat];
@@ -396,7 +384,7 @@ export default function Doctor() {
             <mesh geometry={geometries.hairTop} material={materials.hair} position={[0, 0.03, -0.02]} rotation={[-0.2, 0, 0]} />
             <mesh geometry={geometries.hairTuft} material={materials.hair} position={[0.05, 0.3, 0.02]} rotation={[0.3, 0, -0.4]} />
 
-            <group ref={eyesRef} position={[0, 0.02, 0]}>
+            <group ref={eyesRef} position={[0, 0.02, 0]} userData={{ noOutline: true, noBatch: true }}>
               {([-0.1, 0.1] as const).map((x) => (
                 <group key={x} position={[x, 0, 0.22]}>
                   <mesh geometry={geometries.eye} material={materials.eyeWhite} />
@@ -404,6 +392,7 @@ export default function Doctor() {
                 </group>
               ))}
             </group>
+            <Smile meshRef={mouthRef} position={[0, -0.075, 0.259]} scale={1.35} />
             {([-0.17, 0.17] as const).map((x) => (
               <mesh key={x} geometry={geometries.cheek} material={materials.cheek} position={[x, -0.07, 0.2]} scale={[1, 0.6, 0.5]} userData={{ noOutline: true }} />
             ))}

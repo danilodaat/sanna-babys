@@ -1,10 +1,10 @@
 'use client';
 
-import { Suspense, useEffect, useState } from 'react';
+import { Suspense, useEffect } from 'react';
 import * as runtime from '@/lib/runtime';
 import { Canvas, useThree } from '@react-three/fiber';
 import { Physics } from '@react-three/rapier';
-import { KeyboardControls, PerformanceMonitor } from '@react-three/drei';
+import { KeyboardControls } from '@react-three/drei';
 import * as THREE from 'three';
 import { Hospital } from './world/Hospital';
 import { City } from './world/City';
@@ -23,6 +23,7 @@ import StaticBatcher from './fx/StaticBatcher';
 import { ShadowQuality } from './fx/Shadows';
 import Particles from './fx/Particles';
 import PostFX from './fx/PostFX';
+import AdaptiveQuality, { useRenderQuality } from './fx/AdaptiveQuality';
 import LevelUp from './ui/LevelUp';
 import Minimap from './ui/Minimap';
 import Ambulances, { fleet } from './world/Ambulances';
@@ -94,11 +95,8 @@ function LoadingScreen() {
 
 /* ─── Main Game component ─── */
 export default function Game() {
-  const quality = useGameStore((s) => s.quality);
   const started = useGameStore((s) => s.started);
-  const setQuality = useGameStore((s) => s.setQuality);
-  // Primer aviso de bajo rendimiento: bajar resolución. Segundo: modo ahorro.
-  const [lowDpr, setLowDpr] = useState(false);
+  const dpr = useRenderQuality((s) => s.dpr);
 
   // ?debug expone el runtime en la consola (adelantar la hora, teletransportar, etc.)
   useEffect(() => {
@@ -129,19 +127,12 @@ export default function Game() {
         <KeyboardControls map={KEY_MAP}>
           <Canvas
             shadows={{ type: THREE.PCFShadowMap }}
-            dpr={quality === 'alto' && !lowDpr ? [1, 2] : [1, 1.25]}
+            dpr={dpr}
             style={{ width: '100%', height: '100%', touchAction: 'none' }}
             camera={{ fov: 50, near: 0.1, far: 500, position: [0, 13, 30] }}
-            gl={{ antialias: quality !== 'alto', powerPreference: 'high-performance', toneMapping: THREE.NeutralToneMapping }}
+            gl={{ antialias: true, powerPreference: 'high-performance', toneMapping: THREE.NeutralToneMapping }}
           >
-            {/* Si el celular no aguanta, baja la calidad sola una vez */}
-            <PerformanceMonitor
-              onDecline={() => {
-                if (!started || quality !== 'alto') return;
-                if (!lowDpr) setLowDpr(true);
-                else setQuality('bajo');
-              }}
-            />
+            <AdaptiveQuality />
 
             <DebugGl />
             <ShadowQuality />
@@ -188,6 +179,8 @@ export default function Game() {
           </Canvas>
         </KeyboardControls>
       </Suspense>
+      {/* Viñeta común a ambas calidades, sin otra pasada de postprocesado. */}
+      <div aria-hidden style={{ position: 'absolute', inset: 0, zIndex: 1, pointerEvents: 'none', background: 'radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.2) 100%)' }} />
     </div>
   );
 }

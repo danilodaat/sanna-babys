@@ -100,7 +100,7 @@ function House({ x, z, facing, color, roof }: { x: number; z: number; facing: 1 
       {/* Caminito */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.035, D / 2 + 1.3]}>
         <planeGeometry args={[1.2, 2.6]} />
-        <meshStandardMaterial color="#e6d3b3" />
+        <meshStandardMaterial color="#FFF4E3" />
       </mesh>
     </group>
   );
@@ -155,7 +155,7 @@ export default function Residencial() {
         {/* Calle Sol */}
         <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[lx, 0.021, lz]}>
           <planeGeometry args={[lw, ld]} />
-          <meshStandardMaterial color="#8a8a96" />
+          <meshStandardMaterial color="#747184" />
         </mesh>
         {Array.from({ length: Math.floor(lw / 4) }).map((_, i) => (
           <mesh key={i} rotation={[-Math.PI / 2, 0, 0]} position={[lx - lw / 2 + 2 + i * 4, 0.03, lz]}>

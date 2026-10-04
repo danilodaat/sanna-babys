@@ -68,7 +68,7 @@ function House({ b }: { b: TownBuilding }) {
       {/* Macetero y caminito */}
       <mesh position={[0, 0.035, d / 2 + 1]} rotation={[-Math.PI / 2, 0, 0]}>
         <planeGeometry args={[1.2, 2]} />
-        <meshStandardMaterial color="#e6d3b3" />
+        <meshStandardMaterial color="#FFF4E3" />
       </mesh>
       {[-1, 1].map((sx) => (
         <mesh key={sx} position={[sx * 1.2, 0.3, d / 2 + 0.4]}>
@@ -146,7 +146,7 @@ function Shop({ b }: { b: TownBuilding }) {
       </mesh>
       <mesh castShadow position={[0, H + 0.15, 0]}>
         <boxGeometry args={[w + 0.3, 0.3, d + 0.3]} />
-        <meshStandardMaterial color={b.accent} />
+        <meshStandardMaterial color="#A99BAE" />
       </mesh>
       {/* Vitrina */}
       <mesh position={[-w / 4, 1.5, d / 2 + 0.04]}>

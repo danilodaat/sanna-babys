@@ -7,6 +7,7 @@ import { world, player, DAY_LENGTH } from '@/lib/runtime';
 import { nightMaterials } from '@/components/fx/Toonify';
 import { useGameStore } from '@/store/gameStore';
 import { floorBase, floorOf, insideHospital } from '@/lib/hospital';
+import { useRenderQuality } from '@/components/fx/AdaptiveQuality';
 
 /*
  * Ciclo día/noche: mueve el sol y la luna, interpola colores del cielo,
@@ -28,15 +29,15 @@ interface Key {
 
 // 0 = medianoche · 0.25 amanecer · 0.5 mediodía · 0.75 atardecer
 const KEYS: Key[] = [
-  { t: 0.0, top: '#0B1030', bottom: '#27305E', sun: '#8FA8FF', sunI: 0.35, amb: '#5A6BB5', ambI: 0.45, hemiI: 0.2 },
-  { t: 0.2, top: '#1B1D4A', bottom: '#5A4E86', sun: '#9FB0FF', sunI: 0.3, amb: '#6A6FB8', ambI: 0.45, hemiI: 0.2 },
+  { t: 0.0, top: '#0B1030', bottom: '#27305E', sun: '#8FA8FF', sunI: 0.35, amb: '#B5AEDB', ambI: 0.55, hemiI: 0.26 },
+  { t: 0.2, top: '#1B1D4A', bottom: '#5A4E86', sun: '#9FB0FF', sunI: 0.3, amb: '#B5AEDB', ambI: 0.55, hemiI: 0.26 },
   { t: 0.26, top: '#5C7FD6', bottom: '#FFB38A', sun: '#FFB27A', sunI: 0.8, amb: '#FFD9C2', ambI: 0.55, hemiI: 0.25 },
-  { t: 0.34, top: '#5FB4F5', bottom: '#CDEBFF', sun: '#FFF1D6', sunI: 1.25, amb: '#FFF6E5', ambI: 0.7, hemiI: 0.3 },
-  { t: 0.5, top: '#4AA8F2', bottom: '#D4EEFF', sun: '#FFFBEF', sunI: 1.4, amb: '#FFF8E7', ambI: 0.75, hemiI: 0.3 },
-  { t: 0.66, top: '#58A6EE', bottom: '#DDEBFF', sun: '#FFEBC8', sunI: 1.25, amb: '#FFF2DC', ambI: 0.7, hemiI: 0.3 },
+  { t: 0.34, top: '#5FB4F5', bottom: '#CDEBFF', sun: '#FFF1D6', sunI: 1.25, amb: '#FFF6E5', ambI: 0.58, hemiI: 0.28 },
+  { t: 0.5, top: '#4AA8F2', bottom: '#D4EEFF', sun: '#FFFBEF', sunI: 1.4, amb: '#FFF8E7', ambI: 0.6, hemiI: 0.28 },
+  { t: 0.66, top: '#58A6EE', bottom: '#DDEBFF', sun: '#FFEBC8', sunI: 1.25, amb: '#FFF2DC', ambI: 0.58, hemiI: 0.28 },
   { t: 0.74, top: '#6E6AC8', bottom: '#FF9A6B', sun: '#FF8F5A', sunI: 0.85, amb: '#FFC4A8', ambI: 0.55, hemiI: 0.25 },
-  { t: 0.8, top: '#2A2A66', bottom: '#B3668A', sun: '#C49BFF', sunI: 0.4, amb: '#8A7AC8', ambI: 0.48, hemiI: 0.2 },
-  { t: 1.0, top: '#0B1030', bottom: '#27305E', sun: '#8FA8FF', sunI: 0.35, amb: '#5A6BB5', ambI: 0.45, hemiI: 0.2 },
+  { t: 0.8, top: '#2A2A66', bottom: '#B3668A', sun: '#C49BFF', sunI: 0.4, amb: '#C1AEDC', ambI: 0.55, hemiI: 0.26 },
+  { t: 1.0, top: '#0B1030', bottom: '#27305E', sun: '#8FA8FF', sunI: 0.35, amb: '#B5AEDB', ambI: 0.55, hemiI: 0.26 },
 ];
 
 const tmpA = new THREE.Color();
@@ -81,6 +82,8 @@ const SKY_FRAG = /* glsl */ `
     col += uSunColor * pow(d, 18.0) * 0.35 * (1.0 - uNight);
     col += uSunColor * pow(d, 400.0) * 1.2 * (1.0 - uNight);
     gl_FragColor = vec4(col, 1.0);
+    #include <tonemapping_fragment>
+    #include <colorspace_fragment>
   }
 `;
 
@@ -125,7 +128,7 @@ function Stars() {
 }
 
 export default function DayNight() {
-  const quality = useGameStore((s) => s.quality);
+  const shadows = useRenderQuality((s) => s.shadows);
   const started = useGameStore((s) => s.started);
 
   const sun = useRef<THREE.DirectionalLight>(null);
@@ -195,7 +198,11 @@ export default function DayNight() {
       s.mix(s.a.amb, s.b.amb, amb.current.color);
       amb.current.intensity = s.num(s.a.ambI, s.b.ambI);
     }
-    if (hemi.current) hemi.current.intensity = s.num(s.a.hemiI, s.b.hemiI);
+    if (hemi.current) {
+      hemi.current.intensity = s.num(s.a.hemiI, s.b.hemiI);
+      hemi.current.color.copy(HEMI_DAY).lerp(HEMI_NIGHT, world.night);
+      hemi.current.groundColor.copy(GROUND_DAY).lerp(GROUND_NIGHT, world.night);
+    }
 
     // Sol y luna visibles en el cielo; el grupo sigue a la cámara para que no se acerquen nunca
     if (skyGroup.current) skyGroup.current.position.copy(player.position);
@@ -221,17 +228,17 @@ export default function DayNight() {
     }
   });
 
-  const shadowSize = quality === 'alto' ? 2048 : 1024;
+  const shadowSize = 2048;
 
   return (
     <>
       <primitive object={fog} attach="fog" />
       <primitive object={lightTarget} />
-      <ambientLight ref={amb} intensity={0.7} />
-      <hemisphereLight ref={hemi} args={['#BFE3FF', '#7CC66A', 0.3]} />
+      <ambientLight ref={amb} intensity={0.6} />
+      <hemisphereLight ref={hemi} args={['#BFE3FF', '#8FCB78', 0.28]} />
       <directionalLight
         ref={sun}
-        castShadow={quality === 'alto'}
+        castShadow={shadows}
         target={lightTarget}
         intensity={1.2}
         shadow-mapSize-width={shadowSize}
@@ -267,4 +274,8 @@ export default function DayNight() {
 }
 
 const WARM = new THREE.Color('#FFC970');
+const HEMI_DAY = new THREE.Color('#BFE3FF');
+const HEMI_NIGHT = new THREE.Color('#C6BDEA');
+const GROUND_DAY = new THREE.Color('#8FCB78');
+const GROUND_NIGHT = new THREE.Color('#9C90BC');
 const tmpDir = new THREE.Vector3();

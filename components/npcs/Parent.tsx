@@ -10,11 +10,12 @@ import { player } from '@/lib/runtime';
 import { useNpc, useMarker, MissionMarker } from './useNpc';
 import { BlobShadow } from '@/components/fx/Shadows';
 import { groundHeight } from '@/lib/ground';
+import { Smile, useFace } from '@/components/fx/Face';
 
 interface ParentProps {
   id: string;
   position: [number, number, number];
-  /** Adultos o niños (los niños son el mismo modelo a escala, con otros colores) */
+  /** Adultos o niños (cuerpo más pequeño y cabeza proporcionalmente mayor) */
   variant?: 'mother' | 'father' | 'girl' | 'boy' | 'nurse';
   /** Color de la polera; por defecto el de cada variante */
   color?: string;
@@ -38,6 +39,7 @@ export default function Parent({
 
   const modal = useGameStore((s) => s.modal);
   const { isNear, cheerRef, visualRef, floorVisible } = useNpc(id, position);
+  const { eyesRef, mouthRef } = useFace(id, isNear);
   // Los zapatos del modelo quedan 0.135 m sobre su base: bajarlo hasta el suelo real
   const ground = groundHeight(position[0], position[2], position[1]) - position[1];
   const marker = useMarker(id);
@@ -128,7 +130,7 @@ export default function Parent({
       {marker && <MissionMarker kind={marker} height={isKid ? 2.25 : 1.95} />}
       <group ref={groupRef} userData={{ outline: 0.012, batchLocal: true }}>
         {/* === HEAD === */}
-        <group position={[0, 1.25, 0]}>
+        <group position={[0, 1.25, 0]} scale={isKid ? 1.2 : 1}>
           <mesh geometry={geometries.head} material={materials.skin} />
 
           {/* Hair */}
@@ -162,27 +164,16 @@ export default function Parent({
             />
           )}
 
-          {/* Eyes */}
-          <mesh
-            geometry={geometries.eyeWhite}
-            material={materials.eyeWhite}
-            position={[-0.07, 0.02, 0.17]}
-          />
-          <mesh
-            geometry={geometries.eye}
-            material={materials.eye}
-            position={[-0.07, 0.02, 0.19]}
-          />
-          <mesh
-            geometry={geometries.eyeWhite}
-            material={materials.eyeWhite}
-            position={[0.07, 0.02, 0.17]}
-          />
-          <mesh
-            geometry={geometries.eye}
-            material={materials.eye}
-            position={[0.07, 0.02, 0.19]}
-          />
+          {/* Ojos animados, excluidos del contorno y del lote rígido. */}
+          <group ref={eyesRef} position={[0, 0.02, 0]} userData={{ noOutline: true, noBatch: true }}>
+            {([-0.07, 0.07] as const).map((x) => (
+              <group key={x} position={[x, 0, 0]}>
+                <mesh geometry={geometries.eyeWhite} material={materials.eyeWhite} position={[0, 0, 0.17]} />
+                <mesh geometry={geometries.eye} material={materials.eye} position={[0, 0, 0.19]} />
+              </group>
+            ))}
+          </group>
+          <Smile meshRef={mouthRef} position={[0, -0.055, 0.197]} />
         </group>
 
         {/* === BODY (shirt) === */}
@@ -228,6 +219,7 @@ export default function Parent({
         {hasBaby && (
           <group position={[0.2, 0.72, 0.15]}>
             <mesh geometry={geometries.babyHead} material={materials.babySkin} />
+            <Smile position={[0, -0.025, 0.097]} scale={0.5} />
             <mesh
               geometry={geometries.babyBody}
               material={materials.babyCloth}

@@ -3,22 +3,22 @@
 import { useEffect, useMemo, useRef, type Ref } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
-import { useGameStore } from '@/store/gameStore';
+import { useRenderQuality } from './AdaptiveQuality';
 
 /*
- * Sombras según calidad:
- *  - alto: sombras reales, pero el shadow map se recalcula cada 2 frames
- *    (a 30 Hz no se nota y ahorra la mitad del costo)
- *  - bajo: sin shadow map; cada personaje lleva una sombra redonda simple (<BlobShadow />)
+ * Sombras independientes de resolución y bloom:
+ *  - activas: el shadow map se recalcula cada 2 frames
+ *    (30 actualizaciones/s si el render alcanza 60 FPS)
+ *  - apagadas: cada personaje conserva su sombra redonda simple (<BlobShadow />)
  */
 export function ShadowQuality() {
   const gl = useThree((s) => s.gl);
   const scene = useThree((s) => s.scene);
-  const quality = useGameStore((s) => s.quality);
+  const shadows = useRenderQuality((s) => s.shadows);
   const frame = useRef(0);
 
   useEffect(() => {
-    const on = quality === 'alto';
+    const on = shadows;
     gl.shadowMap.enabled = on;
     gl.shadowMap.autoUpdate = false;
     gl.shadowMap.needsUpdate = true;
@@ -28,10 +28,10 @@ export function ShadowQuality() {
       if (!m) return;
       (Array.isArray(m) ? m : [m]).forEach((x) => (x.needsUpdate = true));
     });
-  }, [quality, gl, scene]);
+  }, [shadows, gl, scene]);
 
   useFrame(() => {
-    if (quality === 'alto' && frame.current++ % 2 === 0) gl.shadowMap.needsUpdate = true;
+    if (shadows && frame.current++ % 2 === 0) gl.shadowMap.needsUpdate = true;
   });
   return null;
 }
@@ -53,12 +53,12 @@ const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, d
 
 /** Sombra barata; always la conserva en alto para modelos sin castShadow. */
 export function BlobShadow({ scale = 1, always = false, meshRef }: { scale?: number; always?: boolean; meshRef?: Ref<THREE.Mesh> }) {
-  const quality = useGameStore((s) => s.quality);
+  const shadows = useRenderQuality((s) => s.shadows);
   // Material propio cuando se anima la opacidad mediante una referencia.
   const material = useMemo(() => meshRef ? blobMat.clone() : blobMat, [meshRef]);
   useEffect(() => () => {
     if (material !== blobMat) material.dispose();
   }, [material]);
-  if (quality === 'alto' && !always) return null;
+  if (shadows && !always) return null;
   return <mesh ref={meshRef} visible={!meshRef} geometry={blobGeo} material={material} position={[0, 0.03, 0]} scale={scale} renderOrder={1} userData={{ noToon: true, noBatch: true }} />;
 }

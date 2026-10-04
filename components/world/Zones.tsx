@@ -10,6 +10,7 @@ import { player, input } from '@/lib/runtime';
 import { toast } from '@/lib/toast';
 import { emit } from '@/lib/fx';
 import { sfx } from '@/lib/audio';
+import { getToonGradient } from '@/components/fx/Toonify';
 
 /*
  * Zonas por nivel:
@@ -43,8 +44,8 @@ function ConeRing({ zone }: { zone: Zone }) {
   const pts = useMemo(() => perimeter(zone), [zone]);
   const geo = useMemo(() => new THREE.ConeGeometry(0.3, 0.8, 10).translate(0, 0.4, 0), []);
   const stripeGeo = useMemo(() => new THREE.CylinderGeometry(0.19, 0.24, 0.14, 10).translate(0, 0.42, 0), []);
-  const mat = useMemo(() => new THREE.MeshToonMaterial({ color: '#ff7a1a' }), []);
-  const stripeMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#ffffff' }), []);
+  const mat = useMemo(() => new THREE.MeshToonMaterial({ color: '#D9A17C', gradientMap: getToonGradient() }), []);
+  const stripeMat = useMemo(() => new THREE.MeshToonMaterial({ color: '#FFF4E3', gradientMap: getToonGradient() }), []);
 
   useLayoutEffect(() => {
     const d = new THREE.Object3D();

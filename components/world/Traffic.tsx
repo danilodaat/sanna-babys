@@ -14,7 +14,7 @@ import { useGameStore } from '@/store/gameStore';
  * bocina (y siguen cuando se corre). Sin colisión.
  */
 
-const COLORS = ['#ef5350', '#42a5f5', '#ffca28', '#66bb6a', '#ab47bc', '#ff7043'];
+const COLORS = ['#C99196', '#86AEC9', '#D8C69B', '#92B58B', '#AB96BC', '#D2A18B'];
 const LANE = 1.9;
 
 interface Car {
