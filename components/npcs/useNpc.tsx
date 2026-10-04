@@ -7,6 +7,8 @@ import { useGameStore } from '@/store/gameStore';
 import { player, npcPositions, npcCheer } from '@/lib/runtime';
 import { CASE_BY_ID, availableStoryCases } from '@/lib/cases';
 import { sfx } from '@/lib/audio';
+import { floorOf, insideHospital } from '@/lib/hospital';
+import { useFloorVisibility } from '@/components/world/useFloorVisibility';
 
 const INTERACTION_DISTANCE = 2.5;
 const CHEER_DURATION = 1.6;
@@ -22,6 +24,9 @@ export function useNpc(id: string, position: [number, number, number]) {
   const cheerRef = useRef<THREE.Group>(null);
   const interact = useGameStore((s) => s.interact);
   const worldPos = useMemo(() => new THREE.Vector3(...position), [position]);
+  const { visualRef, floorVisible } = useFloorVisibility(
+    insideHospital(position[0], position[2]) ? floorOf(position[1]) : null,
+  );
 
   useEffect(() => {
     npcPositions.set(id, worldPos);
@@ -64,7 +69,7 @@ export function useNpc(id: string, position: [number, number, number]) {
     }
   });
 
-  return { isNear, cheerRef };
+  return { isNear, cheerRef, visualRef, floorVisible };
 }
 
 /** Qué marcador mostrar sobre un NPC según el estado de los casos */

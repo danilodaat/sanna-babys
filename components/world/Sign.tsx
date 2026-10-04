@@ -23,14 +23,21 @@ export function Sign({ text, emoji, color, position, width = 6, rotation = 0 }: 
     ctx.textBaseline = 'middle';
     ctx.fillText(emoji, 64, 70);
     ctx.fillStyle = color;
-    ctx.font = 'bold 54px system-ui, sans-serif';
-    ctx.fillText(text.toUpperCase(), 318, 68);
+    const label = text.toUpperCase();
+    let fontSize = 54;
+    ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+    // Dejar margen entre el texto, el emoji y el borde derecho.
+    while (ctx.measureText(label).width > 348 && fontSize > 1) {
+      fontSize--;
+      ctx.font = `bold ${fontSize}px system-ui, sans-serif`;
+    }
+    ctx.fillText(label, 318, 68);
     const t = new THREE.CanvasTexture(c);
     t.colorSpace = THREE.SRGBColorSpace;
     return t;
   }, [text, emoji, color]);
   return (
-    <mesh position={position} rotation={[0, rotation, 0]} userData={{ noToon: true }}>
+    <mesh position={position} rotation={[0, rotation, 0]} userData={{ noToon: true, noBatch: true }}>
       <planeGeometry args={[width, width / 4]} />
       <meshBasicMaterial map={tex} toneMapped={false} />
     </mesh>

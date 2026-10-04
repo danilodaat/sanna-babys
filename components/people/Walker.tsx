@@ -8,6 +8,7 @@ import { useGameStore } from '@/store/gameStore';
 import { player } from '@/lib/runtime';
 import { groundHeight } from '@/lib/ground';
 import { walkerInteractionId, walkerPositions, walkerWaveAt, type WalkerDef } from '@/lib/walkers';
+import { BlobShadow } from '@/components/fx/Shadows';
 
 /*
  * Un vecino que pasea: sigue su circuito, a ratos se detiene a mirar
@@ -145,6 +146,7 @@ export default function Walker({ def }: { def: WalkerDef }) {
   const k = def.kid ? 0.72 : 1;
   return (
     <group ref={root} scale={k}>
+      <BlobShadow />
       {/* Los zapatos quedan 0.088 m sobre la base del modelo */}
       <group position={[0, -0.088, 0]}>
       <group userData={{ outline: 0.012, batchLocal: true }}>

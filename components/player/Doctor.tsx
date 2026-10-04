@@ -13,7 +13,7 @@ import { sfx } from '@/lib/audio';
 import { ITEM_BY_ID } from '@/lib/shop';
 import { getToonGradient } from '@/components/fx/Toonify';
 import { BlobShadow } from '@/components/fx/Shadows';
-import { stairHeightAt } from '@/lib/hospital';
+import { STAIR_STEPS, STAIRS, stairHeightAt } from '@/lib/hospital';
 import { fleet } from '@/components/world/Ambulances';
 
 const MOVE_SPEED = 4.6;
@@ -40,6 +40,7 @@ const damp = (current: number, target: number, lambda: number, dt: number) =>
 export default function Doctor() {
   const rigidBodyRef = useRef<RapierRigidBody>(null);
   const groupRef = useRef<THREE.Group>(null);
+  const shadowRef = useRef<THREE.Mesh>(null);
   const bodyRef = useRef<THREE.Group>(null); // squash & stretch + inclinación
   const headRef = useRef<THREE.Group>(null);
   const eyesRef = useRef<THREE.Group>(null);
@@ -69,6 +70,7 @@ export default function Doctor() {
   const ray = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }), [rapier]);
   const stepRay = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 1, y: 0, z: 0 }), [rapier]);
   const stepDown = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }), [rapier]);
+  const shadowRay = useMemo(() => new rapier.Ray({ x: 0, y: 0, z: 0 }, { x: 0, y: -1, z: 0 }), [rapier]);
 
   // Memoize materials so they don't re-create each frame
   const materials = useMemo(
@@ -131,6 +133,7 @@ export default function Doctor() {
     const riding = useGameStore.getState().riding;
     groupRef.current.visible = riding === null;
     if (riding !== null) {
+      if (shadowRef.current) shadowRef.current.visible = false;
       const u = fleet[riding];
       rb.setTranslation({ x: u.pos.x, y: 0.3, z: u.pos.z }, true);
       rb.setLinvel({ x: 0, y: 0, z: 0 }, true);
@@ -343,9 +346,35 @@ export default function Doctor() {
     if (headRef.current) {
       headRef.current.rotation.z = Math.sin(walkPhase.current) * 0.06 * speed01;
     }
+
+    // La sombra queda sobre el suelo, fuera del cuerpo que salta.
+    const shadow = shadowRef.current;
+    if (shadow) {
+      const p = rb.translation();
+      shadowRay.origin = { x: p.x, y: p.y + 0.3, z: p.z };
+      const floorHit = world.castRay(shadowRay, 30, true, rapier.QueryFilterFlags.EXCLUDE_SENSORS, undefined, undefined, rb);
+      let groundY = floorHit ? shadowRay.origin.y - floorHit.timeOfImpact : -Infinity;
+      // Las escaleras no tienen collider: usar la superficie de sus peldaños.
+      for (const f of STAIRS) {
+        if (p.x < f.x0 || p.x > f.x1 || p.z < f.z0 || p.z > f.z1) continue;
+        const step = Math.min(STAIR_STEPS - 1, Math.floor(((p.x - f.x0) / (f.x1 - f.x0)) * STAIR_STEPS));
+        const t = (step + (f.y1 > f.y0 ? 1 : 0)) / STAIR_STEPS;
+        const y = THREE.MathUtils.lerp(f.y0, f.y1, t);
+        if (y <= shadowRay.origin.y) groundY = Math.max(groundY, y);
+      }
+      shadow.visible = Number.isFinite(groundY);
+      if (shadow.visible) {
+        const height = Math.max(0, p.y - groundY);
+        shadow.position.set(p.x, groundY + 0.03, p.z);
+        shadow.scale.setScalar(Math.max(0.45, 1 - height * 0.25));
+        (shadow.material as THREE.MeshBasicMaterial).opacity = 1 / (1 + height * 0.8);
+      }
+    }
   });
 
   return (
+    <>
+    <BlobShadow meshRef={shadowRef} />
     <RigidBody
       ref={rigidBodyRef}
       position={SPAWN.toArray()}
@@ -358,7 +387,6 @@ export default function Doctor() {
     >
       <CapsuleCollider args={[0.4, 0.22]} position={[0, 0.62, 0]} />
 
-      <BlobShadow />
       {/* Bajado 0.09 m: los zapatos del modelo quedaban sobre la base de la cápsula (flotaba) */}
       <group ref={groupRef} position={[0, -0.09, 0]} userData={{ outline: 0.014 }}>
         <group ref={bodyRef}>
@@ -455,5 +483,6 @@ export default function Doctor() {
         </group>
       </group>
     </RigidBody>
+    </>
   );
 }

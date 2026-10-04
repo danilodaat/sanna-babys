@@ -15,6 +15,7 @@ import * as THREE from 'three';
 export const HIDDEN_LAYER = 31;
 
 export function setHidden(root: THREE.Object3D, hidden: boolean) {
+  root.userData.cutawayHidden = hidden;
   root.traverse((o) => {
     if ((o as THREE.Mesh).isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine) {
       // Las piezas originales ya fusionadas por StaticBatcher quedan siempre ocultas
@@ -23,6 +24,18 @@ export function setHidden(root: THREE.Object3D, hidden: boolean) {
       else o.layers.set(0);
     }
   });
+}
+
+/** Reaplica la ocultación vigente a los lotes nuevos, respetando los ancestros. */
+export function reapplyHidden(root: THREE.Object3D) {
+  const walk = (o: THREE.Object3D, inherited: boolean) => {
+    const hidden = inherited || o.userData?.cutawayHidden === true;
+    if (!o.userData?.batchedSource && ((o as THREE.Mesh).isMesh || (o as THREE.Points).isPoints || (o as THREE.Line).isLine)) {
+      setHiddenSelf(o, hidden);
+    }
+    o.children.forEach((child) => walk(child, hidden));
+  };
+  walk(root, false);
 }
 
 /** Solo este objeto (sin hijos) */

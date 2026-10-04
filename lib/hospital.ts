@@ -13,6 +13,7 @@ export const HOSP_W = 24; // x ∈ [-12, 12]
 export const HOSP_D = 18; // z ∈ [-9, 9]
 export const FLOOR_H = 4.5;
 export const FLOORS_N = 3;
+export const STAIR_STEPS = 18; // peldaños visuales por tramo
 export const SLAB = 0.3;
 
 export interface FloorInfo {

@@ -9,6 +9,7 @@ import { player, world } from '@/lib/runtime';
 import { catInteractionId, catPetAt, catPositions, type CatDef } from '@/lib/cats';
 import { sfx } from '@/lib/audio';
 import { groundHeight } from '@/lib/ground';
+import { BlobShadow } from '@/components/fx/Shadows';
 
 /*
  * Un gatito: modelo procedural low-poly + un cerebrito de estados.
@@ -248,6 +249,7 @@ export default function Cat({ def }: { def: CatDef }) {
   const pattern = def.pattern;
   return (
     <group ref={root} position={[def.home.x, 0, def.home.z]} scale={1.4}>
+      <BlobShadow scale={0.75} />
       <group ref={body}>
         {/* Cuerpo y cabeza (se fusionan en pocos draw calls) */}
         <group userData={{ outline: 0.01, batchLocal: true }}>

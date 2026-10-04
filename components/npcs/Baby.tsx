@@ -29,7 +29,7 @@ export default function Baby({
 }: BabyProps) {
   const groupRef = useRef<THREE.Group>(null);
   const floatPhase = useRef(Math.random() * Math.PI * 2);
-  const { isNear, cheerRef } = useNpc(id, position);
+  const { isNear, cheerRef, visualRef, floorVisible } = useNpc(id, position);
   // La posición de datos está ~0.5 m sobre el piso: apoyar el modelo en el suelo real
   const ground = groundHeight(position[0], position[2], position[1]) - position[1];
   const marker = useMarker(id);
@@ -80,11 +80,12 @@ export default function Baby({
     >
       <CapsuleCollider args={[0.15, 0.12]} position={[0, 0.3, 0]} sensor />
 
+      <group ref={visualRef} visible={floorVisible}>
       <group position={[0, ground, 0]}>
-        <BlobShadow scale={0.6} />
+        <BlobShadow scale={0.6} always />
       </group>
-      <group position={[0, ground - FEET, 0]}>
-      <group ref={cheerRef} scale={1.35}>
+      <group position={[0, ground - FEET, 0]} scale={1.35}>
+      <group ref={cheerRef}>
       {marker && <MissionMarker kind={marker} height={1.25} />}
       <group ref={groupRef} userData={{ outline: 0.012, batchLocal: true }}>
         {/* === HEAD (big, baby proportion) === */}
@@ -169,7 +170,7 @@ export default function Baby({
         />
 
         {/* === FLOATING ICON when player is nearby === */}
-        {isNear && !marker && (
+        {floorVisible && isNear && !marker && (
           <Html
             zIndexRange={[10, 0]}
             position={[0, 0.85, 0]}
@@ -196,7 +197,7 @@ export default function Baby({
 
         {/* Name tag */}
         {/* Solo cerca: cada <Html> se reposiciona en cada frame aunque esté invisible */}
-        {isNear && (
+        {floorVisible && isNear && (
         <Html
           zIndexRange={[10, 0]}
           position={[0, 0.95, 0]}
@@ -221,6 +222,7 @@ export default function Baby({
           </div>
         </Html>
         )}
+      </group>
       </group>
       </group>
       </group>

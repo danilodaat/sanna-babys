@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, type Ref } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
@@ -51,9 +51,14 @@ const blobTex = (() => {
 })();
 const blobMat = new THREE.MeshBasicMaterial({ map: blobTex, transparent: true, depthWrite: false, toneMapped: false });
 
-/** Sombra redonda barata bajo un personaje (solo en calidad "bajo") */
-export function BlobShadow({ scale = 1 }: { scale?: number }) {
+/** Sombra barata; always la conserva en alto para modelos sin castShadow. */
+export function BlobShadow({ scale = 1, always = false, meshRef }: { scale?: number; always?: boolean; meshRef?: Ref<THREE.Mesh> }) {
   const quality = useGameStore((s) => s.quality);
-  if (quality === 'alto') return null;
-  return <mesh geometry={blobGeo} material={blobMat} position={[0, 0.03, 0]} scale={scale} renderOrder={1} userData={{ noToon: true, noBatch: true }} />;
+  // Material propio cuando se anima la opacidad mediante una referencia.
+  const material = useMemo(() => meshRef ? blobMat.clone() : blobMat, [meshRef]);
+  useEffect(() => () => {
+    if (material !== blobMat) material.dispose();
+  }, [material]);
+  if (quality === 'alto' && !always) return null;
+  return <mesh ref={meshRef} visible={!meshRef} geometry={blobGeo} material={material} position={[0, 0.03, 0]} scale={scale} renderOrder={1} userData={{ noToon: true, noBatch: true }} />;
 }

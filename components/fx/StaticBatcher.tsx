@@ -5,7 +5,7 @@ import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { getToonGradient } from './Toonify';
-import { setHiddenSelf } from '@/lib/hide';
+import { reapplyHidden, setHiddenSelf } from '@/lib/hide';
 
 /*
  * Fusión de geometría: de ~1.300 meshes visibles a unas decenas de draw calls.
@@ -87,7 +87,8 @@ function collect(root: THREE.Object3D, visit: (m: THREE.Mesh) => void) {
     if (o !== root && (o.userData?.batch || o.userData?.batchLocal)) return;
     const mesh = o as THREE.Mesh;
     if (mesh.isMesh && !(mesh as THREE.InstancedMesh).isInstancedMesh && !Array.isArray(mesh.material) && !mesh.userData.batched) {
-      if (!(mesh.material as THREE.Material).transparent) visit(mesh);
+      const material = mesh.material as THREE.Material & { map?: THREE.Texture | null };
+      if (!material.transparent && !material.map) visit(mesh);
     }
     o.children.forEach(walk);
   };
@@ -177,12 +178,15 @@ export default function StaticBatcher() {
       collect(r, (mesh) => {
         const key = materialKey(mesh.material as THREE.Material);
         rel.multiplyMatrices(inv, mesh.matrixWorld);
-        addTo(groups, `${key}|${mesh.castShadow}`, mesh, key, prepGeometry(mesh, rel, key.startsWith('plain')));
+        addTo(groups, `${key}|${mesh.castShadow}|${mesh.receiveShadow}`, mesh, key, prepGeometry(mesh, rel, key.startsWith('plain')));
       });
       const res = build(groups, r);
       lm += res.merged;
       lh += res.hidden;
     }
+
+    // Los lotes nuevos deben respetar el cutaway aplicado antes de fusionar.
+    reapplyHidden(scene);
 
     if (new URLSearchParams(window.location.search).has('debug')) {
       console.info(`[StaticBatcher] mundo: ${w.hidden} meshes → ${w.merged} lotes · personajes: ${lh} → ${lm}`);

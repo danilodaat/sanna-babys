@@ -37,7 +37,7 @@ export default function Parent({
   const idlePhase = useRef(Math.random() * Math.PI * 2);
 
   const modal = useGameStore((s) => s.modal);
-  const { isNear, cheerRef } = useNpc(id, position);
+  const { isNear, cheerRef, visualRef, floorVisible } = useNpc(id, position);
   // Los zapatos del modelo quedan 0.135 m sobre su base: bajarlo hasta el suelo real
   const ground = groundHeight(position[0], position[2], position[1]) - position[1];
   const marker = useMarker(id);
@@ -119,11 +119,12 @@ export default function Parent({
     <RigidBody type="fixed" position={position} colliders={false}>
       <CapsuleCollider args={[0.4, 0.18]} position={[0, 0.6, 0]} sensor />
 
+      <group ref={visualRef} visible={floorVisible}>
       <group position={[0, ground, 0]}>
-        <BlobShadow scale={isKid ? 0.75 : 1} />
+        <BlobShadow scale={isKid ? 0.75 : 1} always />
       </group>
-      <group position={[0, ground - 0.135 * (isKid ? 0.72 : 1), 0]}>
-      <group ref={cheerRef} scale={isKid ? 0.72 : 1}>
+      <group position={[0, ground - 0.135 * (isKid ? 0.72 : 1), 0]} scale={isKid ? 0.72 : 1}>
+      <group ref={cheerRef}>
       {marker && <MissionMarker kind={marker} height={isKid ? 2.25 : 1.95} />}
       <group ref={groupRef} userData={{ outline: 0.012, batchLocal: true }}>
         {/* === HEAD === */}
@@ -263,7 +264,7 @@ export default function Parent({
         </group>
 
         {/* === INTERACTION ICON === */}
-        {isNear && !modal && !marker && (
+        {floorVisible && isNear && !modal && !marker && (
           <Html
             zIndexRange={[10, 0]}
             position={[0, 1.65, 0]}
@@ -290,7 +291,7 @@ export default function Parent({
 
         {/* Name tag */}
         {/* Solo cerca: cada <Html> se reposiciona en cada frame aunque esté invisible */}
-        {isNear && (
+        {floorVisible && isNear && (
         <Html
           zIndexRange={[10, 0]}
           position={[0, 1.55, 0]}
@@ -316,6 +317,7 @@ export default function Parent({
         </Html>
         )}
 
+      </group>
       </group>
       </group>
       </group>

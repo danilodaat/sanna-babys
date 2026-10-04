@@ -4,7 +4,7 @@ import { useMemo } from 'react';
 import { useFrame, useThree } from '@react-three/fiber';
 import { RigidBody } from '@react-three/rapier';
 import * as THREE from 'three';
-import { FLOORS, FLOOR_H, HOSP_D, HOSP_W, SLAB, STAIRS, ELEVATOR, floorOf, insideHospital } from '@/lib/hospital';
+import { FLOORS, FLOOR_H, HOSP_D, HOSP_W, SLAB, STAIRS, STAIR_STEPS, ELEVATOR, floorOf, insideHospital } from '@/lib/hospital';
 import { player } from '@/lib/runtime';
 import { setHidden } from '@/lib/hide';
 import { Sign } from './Sign';
@@ -503,12 +503,12 @@ function MaternityFloor() {
 /* ─── Escalera (visual, sin colisión: el doctor se pega a la rampa) ─── */
 
 function StairsVisual() {
-  const steps = 18;
+  const steps = STAIR_STEPS;
   return (
-    <group userData={{ batchLocal: true }}>
+    <group>
       {STAIRS.map((f, fi) => (
         // El tramo 2 está sobre el piso 2: se oculta junto con él
-        <group key={fi} ref={register(fi, null, `stairs${fi}`)}>
+        <group key={fi} ref={register(fi, null, `stairs${fi}`)} userData={{ batchLocal: true }}>
           {Array.from({ length: steps }).map((_, i) => {
             const t0 = i / steps;
             const t1 = (i + 1) / steps;

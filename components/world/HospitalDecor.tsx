@@ -4,6 +4,7 @@ import { useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
+import { useFloorVisibility } from './useFloorVisibility';
 
 /*
  * Decoraciones del hospital que se compran en la farmacia.
@@ -135,10 +136,11 @@ function Aquarium({ position }: { position: [number, number, number] }) {
 
 export default function HospitalDecor() {
   const owned = useGameStore((s) => s.owned);
+  const { visualRef, floorVisible } = useFloorVisibility(1);
   const has = (id: string) => owned.includes(id);
   // Todo esto vive en Pediatría (piso 2, y = 4.5)
   return (
-    <group position={[0, 4.5, 0]}>
+    <group ref={visualRef} visible={floorVisible} position={[0, 4.5, 0]}>
       {has('decor-plants') && (
         <>
           <Plant position={[-10.8, 0, 7.8]} />
