@@ -377,7 +377,8 @@ function Walls({ level }: { level: number }) {
           <boxGeometry args={[W, 0.3, 0.05]} />
           {band}
         </mesh>
-        <Sign text={f.name} emoji={f.emoji} color={f.color} position={[0, level === 0 ? 4.9 - 0.5 : 2.5, D / 2 + T / 2 + 0.06]} width={level === 0 ? 4.4 : 6} />
+        {/* En el piso 1 el letrero va parado sobre el borde del alero: pegado a la pared quedaba tapado por él */}
+        <Sign text={f.name} emoji={f.emoji} color={f.color} position={level === 0 ? [0, 4.2 + 4.4 / 8, D / 2 + 2.3] : [0, 2.5, D / 2 + T / 2 + 0.06]} width={level === 0 ? 4.4 : 6} />
       </group>
     </>
   );
