@@ -1,6 +1,7 @@
 'use client';
 
 import { RigidBody } from '@react-three/rapier';
+import { BuildingDetails, PondRipples, hideColliderVisual } from './CityDetails';
 
 /* ─── Simple tree: trunk cylinder + foliage sphere/cone ─── */
 function Tree({ position, height = 4 }: { position: [number, number, number]; height?: number }) {
@@ -91,12 +92,14 @@ function Building({
   color,
   roofColor,
   windowColor = '#B3E5FC',
+  awning = false,
 }: {
   position: [number, number, number];
   size: [number, number, number]; // [w, h, d]
   color: string;
   roofColor: string;
   windowColor?: string;
+  awning?: boolean;
 }) {
   const [w, h, d] = size;
   return (
@@ -111,6 +114,7 @@ function Building({
         <boxGeometry args={[w + 0.4, 0.4, d + 0.4]} />
         <meshStandardMaterial color={roofColor} />
       </mesh>
+      <group ref={hideColliderVisual} userData={{ noBatch: true }}>
       {/* Windows — front */}
       {Array.from({ length: Math.max(1, Math.floor(w / 3)) }).map((_, i) => {
         const xStart = -w / 2 + 1.5;
@@ -126,8 +130,6 @@ function Building({
               emissive={windowColor}
               emissiveIntensity={0.1}
               userData={{ night: 'window' }}
-              transparent
-              opacity={0.75}
             />
           </mesh>
         ));
@@ -137,6 +139,8 @@ function Building({
         <boxGeometry args={[1.2, 2, 0.05]} />
         <meshStandardMaterial color="#5D4037" />
       </mesh>
+      </group>
+      <BuildingDetails position={position} size={size} roofColor={roofColor} windowColor={windowColor} awning={awning} />
     </group>
   );
 }
@@ -230,7 +234,7 @@ function Park({ position }: { position: [number, number, number] }) {
       {/* Small pond */}
       <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[7, 0.04, 0]}>
         <circleGeometry args={[3, 24]} />
-        <meshStandardMaterial color="#4FC3F7" transparent opacity={0.8} />
+        <meshStandardMaterial color="#80CBC4" />
       </mesh>
     </group>
   );
@@ -269,6 +273,7 @@ function FlowerBed({ position }: { position: [number, number, number] }) {
    ════════════════════════════════════════════ */
 export function City() {
   return (
+    <>
     <RigidBody type="fixed" colliders="trimesh">
       <group userData={{ batch: true }}>
         {/* ═══ ROADS ═══ */}
@@ -306,9 +311,10 @@ export function City() {
           color="#FFF9C4"
           roofColor="#C5A174"
           windowColor="#FFECB3"
+          awning
         />
         {/* Store awning */}
-        <mesh castShadow position={[-3, 4.5, 38.3]} rotation={[-0.3, 0, 0]}>
+        <mesh ref={hideColliderVisual} userData={{ noBatch: true }} castShadow position={[-3, 4.5, 38.3]} rotation={[-0.3, 0, 0]}>
           <boxGeometry args={[10.5, 0.1, 2]} />
           <meshStandardMaterial color="#FF6F00" />
         </mesh>
@@ -434,5 +440,7 @@ export function City() {
         </group>
       </group>
     </RigidBody>
+    <PondRipples />
+    </>
   );
 }

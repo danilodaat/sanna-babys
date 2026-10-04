@@ -569,6 +569,43 @@ function HospitalCutaway() {
   return null;
 }
 
+/** Entrada visual fuera del trimesh, con grupos propios para el cutaway. */
+function EntranceVisual() {
+  return (
+    <>
+      <group ref={register(0, 'S', 'entry')} userData={{ batchLocal: true }}>
+        {[-2.2, 2.2].map((x) => (
+          <mesh key={x} position={[x, 2.1, D / 2 + T / 2 + 0.06]}>
+            <boxGeometry args={[0.4, 4.2, 0.08]} />
+            <meshStandardMaterial color="#ef5350" />
+          </mesh>
+        ))}
+        <mesh position={[0, 4.35, D / 2 + T / 2 + 0.06]}>
+          <boxGeometry args={[4.8, 0.3, 0.08]} />
+          <meshStandardMaterial color="#ef5350" />
+        </mesh>
+        <group position={[6.25, 2.4, D / 2 + T / 2 + 0.08]}>
+          <mesh>
+            <boxGeometry args={[0.4, 2, 0.12]} />
+            <meshStandardMaterial color="#ef5350" />
+          </mesh>
+          <mesh>
+            <boxGeometry args={[1.3, 0.4, 0.12]} />
+            <meshStandardMaterial color="#ef5350" />
+          </mesh>
+        </group>
+      </group>
+      <group ref={register(0, null, 'entry-route')} userData={{ batchLocal: true }}>
+        {/* Desde la puerta hasta recepción, 3.5 cm sobre las baldosas. */}
+        <mesh receiveShadow rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.145, 2.4]}>
+          <planeGeometry args={[0.55, 13.2]} />
+          <meshStandardMaterial color="#ef5350" />
+        </mesh>
+      </group>
+    </>
+  );
+}
+
 /* ─── Hospital ─── */
 
 export function Hospital() {
@@ -684,6 +721,7 @@ export function Hospital() {
           </group>
         </group>
       </RigidBody>
+      <EntranceVisual />
       <StairsVisual />
       <HospitalCutaway />
     </>

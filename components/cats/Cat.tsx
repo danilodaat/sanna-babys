@@ -10,6 +10,7 @@ import { catInteractionId, catPetAt, catPositions, type CatDef } from '@/lib/cat
 import { sfx } from '@/lib/audio';
 import { groundHeight } from '@/lib/ground';
 import { BlobShadow } from '@/components/fx/Shadows';
+import { animationStep } from '@/lib/visualLod';
 
 /*
  * Un gatito: modelo procedural low-poly + un cerebrito de estados.
@@ -29,6 +30,24 @@ const NEAR = 1.9;
 
 const damp = (a: number, b: number, l: number, dt: number) => THREE.MathUtils.lerp(a, b, 1 - Math.exp(-l * dt));
 
+// Geometrías compartidas por todos los gatos durante la vida del módulo.
+const g = {
+  body: new THREE.CapsuleGeometry(0.13, 0.26, 6, 12).rotateX(Math.PI / 2),
+  head: new THREE.SphereGeometry(0.15, 16, 14),
+  muzzle: new THREE.SphereGeometry(0.07, 10, 8),
+  ear: new THREE.ConeGeometry(0.055, 0.11, 4),
+  earIn: new THREE.ConeGeometry(0.032, 0.07, 4),
+  eye: new THREE.SphereGeometry(0.034, 10, 8),
+  pupil: new THREE.CapsuleGeometry(0.009, 0.03, 2, 6),
+  nose: new THREE.SphereGeometry(0.018, 6, 6),
+  whisker: new THREE.BoxGeometry(0.14, 0.004, 0.004),
+  leg: new THREE.CapsuleGeometry(0.03, 0.13, 3, 6),
+  paw: new THREE.SphereGeometry(0.038, 8, 6),
+  tail: new THREE.CapsuleGeometry(0.025, 0.1, 3, 6),
+  stripe: new THREE.BoxGeometry(0.2, 0.03, 0.05),
+  patch: new THREE.SphereGeometry(0.09, 10, 8),
+};
+
 export default function Cat({ def }: { def: CatDef }) {
   const root = useRef<THREE.Group>(null);
   const body = useRef<THREE.Group>(null);
@@ -47,6 +66,7 @@ export default function Cat({ def }: { def: CatDef }) {
   const [sleeping, setSleeping] = useState(false);
   const lastMeow = useRef(0);
   const followDir = useRef(new THREE.Vector3(0, 0, 1));
+  const lod = useRef({ elapsed: 0, visible: true });
 
   const interact = useGameStore((s) => s.interact);
   const isPet = useGameStore((s) => s.petCat === def.id);
@@ -64,26 +84,6 @@ export default function Cat({ def }: { def: CatDef }) {
     };
   }, [def]);
 
-  const g = useMemo(
-    () => ({
-      body: new THREE.CapsuleGeometry(0.13, 0.26, 6, 12).rotateX(Math.PI / 2),
-      head: new THREE.SphereGeometry(0.15, 16, 14),
-      muzzle: new THREE.SphereGeometry(0.07, 10, 8),
-      ear: new THREE.ConeGeometry(0.055, 0.11, 4),
-      earIn: new THREE.ConeGeometry(0.032, 0.07, 4),
-      eye: new THREE.SphereGeometry(0.034, 10, 8),
-      pupil: new THREE.CapsuleGeometry(0.009, 0.03, 2, 6),
-      nose: new THREE.SphereGeometry(0.018, 6, 6),
-      whisker: new THREE.BoxGeometry(0.14, 0.004, 0.004),
-      leg: new THREE.CapsuleGeometry(0.03, 0.13, 3, 6),
-      paw: new THREE.SphereGeometry(0.038, 8, 6),
-      tail: new THREE.CapsuleGeometry(0.025, 0.1, 3, 6),
-      stripe: new THREE.BoxGeometry(0.2, 0.03, 0.05),
-      patch: new THREE.SphereGeometry(0.09, 10, 8),
-    }),
-    [],
-  );
-
   const pickWanderTarget = () => {
     const a = Math.random() * Math.PI * 2;
     const r = Math.sqrt(Math.random()) * def.home.r;
@@ -94,7 +94,7 @@ export default function Cat({ def }: { def: CatDef }) {
     const r = root.current;
     const b = body.current;
     if (!r || !b) return;
-    const dt = Math.min(rawDelta, 0.05);
+    let dt = Math.min(rawDelta, 0.05);
     const t = s.clock.elapsedTime;
     const p = pos.current;
 
@@ -207,8 +207,12 @@ export default function Cat({ def }: { def: CatDef }) {
     r.position.copy(p);
     r.rotation.y = heading.current;
     catPositions.set(def.id, p);
-    // Lejos (>45 m, ya tapado por la niebla) no se dibuja: ahorra draw calls en celular
-    r.visible = dist < 45 || state.current === 'follow';
+    // Solo las poses bajan de frecuencia; la lógica y la fase siguen avanzando.
+    phase.current += dt * (speed > 0.05 ? 6 + speed * 3 : 0);
+    const poseDelta = animationStep(lod.current, s.camera, p, dt, state.current === 'follow' || isNear);
+    r.visible = lod.current.visible;
+    if (poseDelta === 0) return;
+    dt = poseDelta;
 
     // ─── Poses ───
     const moving = speed > 0.05;
@@ -224,7 +228,6 @@ export default function Cat({ def }: { def: CatDef }) {
     const breathe = 1 + Math.sin(t * (sleep ? 1.6 : 3)) * (sleep ? 0.04 : 0.015);
     b.scale.set(breathe, 1, 1);
 
-    phase.current += dt * (moving ? 6 + speed * 3 : 0);
     const swing = moving ? Math.sin(phase.current * 2) * 0.7 : 0;
     legs.current.forEach((l, i) => {
       if (!l) return;
@@ -248,7 +251,7 @@ export default function Cat({ def }: { def: CatDef }) {
 
   const pattern = def.pattern;
   return (
-    <group ref={root} position={[def.home.x, 0, def.home.z]} scale={1.4}>
+    <group ref={root} position={[def.home.x, 0, def.home.z]} scale={1.4} dispose={null}>
       <BlobShadow scale={0.75} />
       <group ref={body}>
         {/* Cuerpo y cabeza (se fusionan en pocos draw calls) */}

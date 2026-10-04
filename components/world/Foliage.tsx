@@ -1,15 +1,17 @@
 'use client';
 
-import { useLayoutEffect, useMemo, useRef } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useGameStore } from '@/store/gameStore';
-import { TOWN } from '@/lib/mapData';
+import { PARK, POND, ROADS, TOWN } from '@/lib/mapData';
 import { getToonGradient } from '@/components/fx/Toonify';
+import { NPCS } from '@/lib/npcs';
+import { SIDEWALKS } from '@/lib/ground';
 
 /*
  * Pasto y flores instanciados que se mecen con el viento (shader).
- * Miles de matas en 2 draw calls. Se evitan pistas, hospital y edificios.
+ * Nueve sectores permiten descartar vegetación fuera del encuadre.
  */
 
 // Zonas sin vegetación: [x, z, halfW, halfD]
@@ -32,13 +34,29 @@ const BLOCKED: [number, number, number, number][] = [
   [-30.5, -9, 1.5, 4.5], // arco del sol
   [-10, -28, 5, 4.5],
   [5, -30, 6, 5],
-  [-40, 38, 1.5, 11], // sendero del parque
+  [-40, 38, 2.2, 11], // sendero del parque y margen tranquilo
   [-50, 37.5, 3, 2], // columpios
   [-30, 33, 2.5, 2], // tobogán
   [-47, 44, 1.8, 1.8], // arenero
 ];
 
+// Flores concentradas en accesos y jardines: [x, z, radioX, radioZ].
+const GARDENS = [
+  [-6, 11.3, 1.2, 0.5], [6, 11.3, 1.2, 0.5],
+  [-16, 26.3, 2, 0.8], [2, 27, 2, 1],
+  [-49, 30, 2.8, 1.5], [-49, 47, 2.5, 1],
+  [-44, 7.5, 4, 1], [43, 10, 2, 1.5],
+];
+const OUTDOOR_NPCS = NPCS.filter((n) => n.position[1] < 1);
+const CLEAR_PATHS = [...ROADS, ...SIDEWALKS];
+type Plant = { x: number; z: number; r: number; s: number; c: number };
+
 function blocked(x: number, z: number) {
+  if ((x - POND.x) ** 2 + (z - POND.z) ** 2 < (POND.r + 0.65) ** 2) return true;
+  if (OUTDOOR_NPCS.some((n) => (x - n.position[0]) ** 2 + (z - n.position[2]) ** 2 < 2.2 ** 2)) return true;
+  for (const [cx, cz, w, d] of CLEAR_PATHS) {
+    if (Math.abs(x - cx) < w / 2 + 0.6 && Math.abs(z - cz) < d / 2 + 0.6) return true;
+  }
   for (const [bx, bz, hw, hd] of BLOCKED) {
     if (Math.abs(x - bx) < hw && Math.abs(z - bz) < hd) return true;
   }
@@ -50,17 +68,24 @@ function blocked(x: number, z: number) {
   return false;
 }
 
-function scatter(count: number, range: number, seed: number) {
+function scatter(count: number, range: number, seed: number, flowers = false) {
   let s = seed;
   const rnd = () => {
     s = (s * 16807) % 2147483647;
     return (s - 1) / 2147483646;
   };
-  const out: { x: number; z: number; r: number; s: number; c: number }[] = [];
+  const out: Plant[] = [];
   let guard = 0;
   while (out.length < count && guard++ < count * 10) {
-    const x = (rnd() - 0.5) * range * 2;
-    const z = (rnd() - 0.5) * range * 2;
+    let x = (rnd() - 0.5) * range * 2;
+    let z = (rnd() - 0.5) * range * 2;
+    if (flowers) {
+      const [cx, cz, rx, rz] = GARDENS[Math.floor(rnd() * GARDENS.length)];
+      const a = rnd() * Math.PI * 2;
+      const r = Math.sqrt(rnd());
+      x = cx + Math.cos(a) * r * rx;
+      z = cz + Math.sin(a) * r * rz;
+    }
     if (blocked(x, z)) continue;
     out.push({ x, z, r: rnd() * Math.PI * 2, s: 0.6 + rnd() * 0.8, c: rnd() });
   }
@@ -90,14 +115,62 @@ function windMaterial(color: string, gradient: THREE.Texture, uniforms: { uTime:
   return m;
 }
 
+/** Un lote por especie y sector, con límites que incluyen el viento. */
+function Sector({ points, geometry, material, flowers = false }: {
+  points: Plant[];
+  geometry: THREE.BufferGeometry;
+  material: THREE.MeshToonMaterial;
+  flowers?: boolean;
+}) {
+  const ref = useRef<THREE.InstancedMesh>(null);
+  useLayoutEffect(() => {
+    const mesh = ref.current;
+    if (!mesh) return;
+    const dummy = new THREE.Object3D();
+    const color = new THREE.Color();
+    const palette = flowers ? ['#DFA4BA', '#E8D8A4', '#FFF4E3', '#B89AC9', '#E4B797', '#9FC8D8'] : ['#80B66F', '#8FCB78', '#73A765', '#A0CC8B'];
+    points.forEach((p, i) => {
+      const inPark = Math.abs(p.x - PARK[0]) < PARK[2] / 2 && Math.abs(p.z - PARK[1]) < PARK[3] / 2;
+      dummy.position.set(p.x, inPark ? 0.05 : 0, p.z);
+      dummy.rotation.set(0, p.r, 0);
+      dummy.scale.setScalar(flowers ? 0.8 + p.s * 0.4 : p.s);
+      dummy.updateMatrix();
+      mesh.setMatrixAt(i, dummy.matrix);
+      mesh.setColorAt(i, color.set(palette[Math.floor(p.c * palette.length)]));
+    });
+    mesh.instanceMatrix.needsUpdate = true;
+    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+    // El shader desplaza las puntas: ampliar los límites calculados en CPU.
+    mesh.computeBoundingBox();
+    mesh.boundingBox?.expandByScalar(0.3);
+    mesh.computeBoundingSphere();
+    if (mesh.boundingSphere) mesh.boundingSphere.radius += 0.3;
+    return () => mesh.dispose();
+  }, [points, flowers]);
+  return (
+    <instancedMesh ref={ref} args={[geometry, material, points.length]} receiveShadow={!flowers} userData={{ noToon: true }} dispose={null} />
+  );
+}
+
 export default function Foliage() {
   const quality = useGameStore((s) => s.quality);
-  const grassRef = useRef<THREE.InstancedMesh>(null);
-  const flowerRef = useRef<THREE.InstancedMesh>(null);
   const uniforms = useMemo(() => ({ uTime: { value: 0 } }), []);
 
   const grassCount = quality === 'alto' ? 3200 : 1400;
   const flowerCount = quality === 'alto' ? 500 : 220;
+
+  const sectors = useMemo(() => {
+    const split = (points: Plant[]) => {
+      const chunks = Array.from({ length: 9 }, () => [] as Plant[]);
+      for (const p of points) {
+        const x = Math.max(0, Math.min(2, Math.floor((p.x + 96) / 64)));
+        const z = Math.max(0, Math.min(2, Math.floor((p.z + 96) / 64)));
+        chunks[z * 3 + x].push(p);
+      }
+      return chunks;
+    };
+    return { grass: split(scatter(grassCount, 95, 11)), flowers: split(scatter(flowerCount, 90, 23, true)) };
+  }, [grassCount, flowerCount]);
 
   const gradient = useMemo(() => getToonGradient(), []);
 
@@ -128,39 +201,12 @@ export default function Foliage() {
     };
   }, [gradient, uniforms]);
 
-  useLayoutEffect(() => {
-    const dummy = new THREE.Object3D();
-    const color = new THREE.Color();
-    const greens = ['#80B66F', '#8FCB78', '#73A765', '#A0CC8B'];
-    const petals = ['#DFA4BA', '#E8D8A4', '#FFF4E3', '#B89AC9', '#E4B797', '#9FC8D8'];
-
-    const g = grassRef.current;
-    if (g) {
-      scatter(grassCount, 95, 11).forEach((p, i) => {
-        dummy.position.set(p.x, 0, p.z);
-        dummy.rotation.set(0, p.r, 0);
-        dummy.scale.setScalar(p.s);
-        dummy.updateMatrix();
-        g.setMatrixAt(i, dummy.matrix);
-        g.setColorAt(i, color.set(greens[Math.floor(p.c * greens.length)]));
-      });
-      g.instanceMatrix.needsUpdate = true;
-      if (g.instanceColor) g.instanceColor.needsUpdate = true;
-    }
-    const f = flowerRef.current;
-    if (f) {
-      scatter(flowerCount, 90, 23).forEach((p, i) => {
-        dummy.position.set(p.x, 0, p.z);
-        dummy.rotation.set(0, p.r, 0);
-        dummy.scale.setScalar(0.8 + p.s * 0.4);
-        dummy.updateMatrix();
-        f.setMatrixAt(i, dummy.matrix);
-        f.setColorAt(i, color.set(petals[Math.floor(p.c * petals.length)]));
-      });
-      f.instanceMatrix.needsUpdate = true;
-      if (f.instanceColor) f.instanceColor.needsUpdate = true;
-    }
-  }, [grassCount, flowerCount]);
+  useEffect(() => () => {
+    grass.geometry.dispose();
+    grass.material.dispose();
+    flower.geometry.dispose();
+    flower.material.dispose();
+  }, [grass, flower]);
 
   useFrame((state) => {
     uniforms.uTime.value = state.clock.elapsedTime;
@@ -168,19 +214,12 @@ export default function Foliage() {
 
   return (
     <group>
-      <instancedMesh
-        key={`g-${grassCount}`}
-        ref={grassRef}
-        args={[grass.geometry, grass.material, grassCount]}
-        receiveShadow
-        userData={{ noToon: true }}
-      />
-      <instancedMesh
-        key={`f-${flowerCount}`}
-        ref={flowerRef}
-        args={[flower.geometry, flower.material, flowerCount]}
-        userData={{ noToon: true }}
-      />
+      {sectors.grass.map((points, i) => points.length > 0 && (
+        <Sector key={`g-${i}`} points={points} geometry={grass.geometry} material={grass.material} />
+      ))}
+      {sectors.flowers.map((points, i) => points.length > 0 && (
+        <Sector key={`f-${i}`} points={points} geometry={flower.geometry} material={flower.material} flowers />
+      ))}
     </group>
   );
 }

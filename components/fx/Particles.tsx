@@ -108,6 +108,7 @@ function Pool({ kind }: { kind: FxKind }) {
   const cfg = CONFIGS[kind];
   const meshRef = useRef<THREE.InstancedMesh>(null);
   const dummy = useMemo(() => new THREE.Object3D(), []);
+  const active = useRef(0);
 
   const particles = useMemo<Particle[]>(
     () =>
@@ -177,6 +178,7 @@ function Pool({ kind }: { kind: FxKind }) {
         if (p.alive) continue;
         cfg.spawn(p, req.position, spawned, req.count);
         p.alive = true;
+        active.current++;
         p.life = 0;
         p.rot.set(Math.random() * 6, Math.random() * 6, Math.random() * 6);
         if (kind === 'hearts') p.rot.set(0, Math.random() * 6, 0);
@@ -184,12 +186,20 @@ function Pool({ kind }: { kind: FxKind }) {
       }
     }
 
+    if (active.current === 0) {
+      mesh.visible = false;
+      return;
+    }
+
     let visible = 0;
     for (let i = 0; i < particles.length; i++) {
       const p = particles[i];
       if (p.alive) {
         p.life += delta;
-        if (p.life >= p.maxLife) p.alive = false;
+        if (p.life >= p.maxLife) {
+          p.alive = false;
+          active.current--;
+        }
       }
       if (!p.alive) {
         dummy.scale.setScalar(0);
@@ -224,6 +234,7 @@ function Pool({ kind }: { kind: FxKind }) {
     <instancedMesh
       ref={meshRef}
       args={[geometry, material, cfg.max]}
+      visible={false}
       frustumCulled={false}
       userData={{ noToon: true }}
     />

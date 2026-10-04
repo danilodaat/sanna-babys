@@ -9,6 +9,7 @@ import { player } from '@/lib/runtime';
 import { groundHeight } from '@/lib/ground';
 import { walkerInteractionId, walkerPositions, walkerWaveAt, type WalkerDef } from '@/lib/walkers';
 import { BlobShadow } from '@/components/fx/Shadows';
+import { animationStep } from '@/lib/visualLod';
 
 /*
  * Un vecino que pasea: sigue su circuito, a ratos se detiene a mirar
@@ -17,6 +18,24 @@ import { BlobShadow } from '@/components/fx/Shadows';
  */
 
 const NEAR = 2.2;
+
+// Geometrías compartidas por todos los vecinos durante la vida del módulo.
+const g = {
+  head: new THREE.SphereGeometry(0.21, 16, 14),
+  hair: new THREE.SphereGeometry(0.22, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
+  eye: new THREE.SphereGeometry(0.028, 8, 6),
+  body: new THREE.CapsuleGeometry(0.17, 0.3, 4, 10),
+  limb: new THREE.CapsuleGeometry(0.055, 0.28, 3, 8),
+  hand: new THREE.SphereGeometry(0.055, 8, 6),
+  shoe: new THREE.SphereGeometry(0.07, 8, 6),
+  hat: new THREE.CylinderGeometry(0.2, 0.3, 0.12, 14),
+  hatTop: new THREE.CylinderGeometry(0.17, 0.2, 0.18, 14),
+  bag: new THREE.BoxGeometry(0.22, 0.26, 0.1),
+  lens: new THREE.TorusGeometry(0.05, 0.01, 6, 14),
+  balloon: new THREE.SphereGeometry(0.2, 12, 12),
+  string: new THREE.CylinderGeometry(0.004, 0.004, 0.9, 3),
+  cane: new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6),
+};
 
 export default function Walker({ def }: { def: WalkerDef }) {
   const root = useRef<THREE.Group>(null);
@@ -40,6 +59,7 @@ export default function Walker({ def }: { def: WalkerDef }) {
   const heading = useRef(0);
   const phase = useRef(Math.random() * 10);
   const pos = useRef(new THREE.Vector3());
+  const lod = useRef({ elapsed: 0, visible: true });
 
   const pointAt = (dist: number, out: THREE.Vector3) => {
     // Ida y vuelta si el circuito no es cerrado
@@ -60,26 +80,6 @@ export default function Walker({ def }: { def: WalkerDef }) {
     const mk = (c: string) => new THREE.MeshStandardMaterial({ color: c });
     return { skin: mk(def.skin), shirt: mk(def.shirt), pants: mk(def.pants), hair: mk(def.hair), dark: mk('#1a1a1a'), white: mk('#ffffff'), red: mk('#ef5350'), brown: mk('#795548') };
   }, [def]);
-  const g = useMemo(
-    () => ({
-      head: new THREE.SphereGeometry(0.21, 16, 14),
-      hair: new THREE.SphereGeometry(0.22, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.5),
-      eye: new THREE.SphereGeometry(0.028, 8, 6),
-      body: new THREE.CapsuleGeometry(0.17, 0.3, 4, 10),
-      limb: new THREE.CapsuleGeometry(0.055, 0.28, 3, 8),
-      hand: new THREE.SphereGeometry(0.055, 8, 6),
-      shoe: new THREE.SphereGeometry(0.07, 8, 6),
-      hat: new THREE.CylinderGeometry(0.2, 0.3, 0.12, 14),
-      hatTop: new THREE.CylinderGeometry(0.17, 0.2, 0.18, 14),
-      bag: new THREE.BoxGeometry(0.22, 0.26, 0.1),
-      lens: new THREE.TorusGeometry(0.05, 0.01, 6, 14),
-      balloon: new THREE.SphereGeometry(0.2, 12, 12),
-      string: new THREE.CylinderGeometry(0.004, 0.004, 0.9, 3),
-      cane: new THREE.CylinderGeometry(0.02, 0.02, 0.9, 6),
-    }),
-    [],
-  );
-
   useFrame((st, raw) => {
     const r = root.current;
     if (!r) return;
@@ -119,15 +119,20 @@ export default function Walker({ def }: { def: WalkerDef }) {
     r.position.copy(p);
     r.rotation.y = heading.current;
     walkerPositions.set(def.id, p);
-    r.visible = dist < 50; // lejos no se dibuja (ahorra draw calls)
-
-    // Animación
+    // Movimiento y apoyo se actualizan incluso cuando no toca animar las poses.
     const walking = !stop;
     phase.current += dt * (walking ? 7 * def.speed : 0);
-    const sw = walking ? Math.sin(phase.current) * 0.6 : 0;
+    r.position.y = groundHeight(p.x, p.z) + (walking ? Math.abs(Math.cos(phase.current)) * 0.03 : 0);
     const wave = performance.now() / 1000 - (walkerWaveAt.get(def.id) ?? -99) < 1.6;
+    const poseDelta = animationStep(lod.current, st.camera, r.position, dt, isNear || wave);
+    r.visible = lod.current.visible;
+    if (poseDelta === 0) return;
+
+    // Animación a frecuencia reducida en la distancia, con mezcla por tiempo.
+    const sw = walking ? Math.sin(phase.current) * 0.6 : 0;
+    const blend = 1 - Math.pow(0.7, poseDelta * 60);
     legs.current.forEach((l, i) => {
-      if (l) l.rotation.x = THREE.MathUtils.lerp(l.rotation.x, i ? -sw : sw, 0.3);
+      if (l) l.rotation.x = THREE.MathUtils.lerp(l.rotation.x, i ? -sw : sw, blend);
     });
     arms.current.forEach((a, i) => {
       if (!a) return;
@@ -135,17 +140,15 @@ export default function Walker({ def }: { def: WalkerDef }) {
         a.rotation.x = -2.6;
         a.rotation.z = Math.sin(t * 14) * 0.4;
       } else {
-        a.rotation.x = THREE.MathUtils.lerp(a.rotation.x, def.extra === 'balloon' && i === 0 ? -0.5 : i ? sw : -sw, 0.3);
+        a.rotation.x = THREE.MathUtils.lerp(a.rotation.x, def.extra === 'balloon' && i === 0 ? -0.5 : i ? sw : -sw, blend);
         a.rotation.z = 0;
       }
     });
-    // Pisar el suelo real (pasto, calle o vereda) + un rebote chiquito al caminar
-    r.position.y = groundHeight(p.x, p.z) + (walking ? Math.abs(Math.cos(phase.current)) * 0.03 : 0);
   });
 
   const k = def.kid ? 0.72 : 1;
   return (
-    <group ref={root} scale={k}>
+    <group ref={root} scale={k} dispose={null}>
       <BlobShadow />
       {/* Los zapatos quedan 0.088 m sobre la base del modelo */}
       <group position={[0, -0.088, 0]}>
